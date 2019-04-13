@@ -41,7 +41,7 @@ def tone_distortion_measurement(hf):
                 max_distortion = distortion if (max_distortion == None or distortion > max_distortion) else max_distortion
     return max_distortion
 
-def min_tone_distortion(hist, uniform, factor_range = 3):
+def min_tone_distortion(hist, uniform, factor_range = 2):
     min_distortion = None
     for factor in np.arange(0, factor_range, 0.1):
         modified_hist = (1/(1 + factor)) * hist + (factor / (1 + factor)) * uniform
@@ -67,12 +67,44 @@ for i in range(3):
     image[:, :, i] = np.uint8(255 * ((image[:, :, i] - min) / (max - min)))
 # turn to grayscale
 gray = np.uint8(image[:, :, 0] * 0.114 + image[:, :, 1] * 0.587 + image[:, :, 2] * 0.299)
-
+#adopted enhance grayscale image_
 ade_gray = adjustable_histogram_equalization(gray)
-cv2.imwrite('D:\\field_project1\\color_balance\\ade_3.tif', ade_gray)
 
-cv2.imshow('ade', ade_gray)
-cv2.imshow('gray', gray)
+enhanced_rgb = np.zeros(image.shape)
+divider = ade_gray / (gray + 1)
+greater_than_one = divider > 1
+
+factor1 = ((255 - ade_gray) / (255 - gray))
+factor1 = np.dstack((factor1, factor1, factor1))
+gray = np.dstack((gray, gray, gray))
+ade_gray = np.dstack((ade_gray, ade_gray, ade_gray))
+num = ((255 - ade_gray) / (256 - gray)) * (image - gray) + ade_gray
+for i in range(row):
+    for j in range(col):
+        enhanced_rgb[i, j, :] = image[i, j, :] * divider[i, j] if greater_than_one[i, j] else num[i, j, :]
+
+
+'''
+for i in range(3):
+    for j in range(row):
+        for k in range(col):
+            gray[j, k] = np.float(gray[j, k])
+            ade_gray[j, k] = np.float(ade_gray[j, k])
+            print('123')
+            if float(ade_gray[j, k] / gray[j, k]) <= 1:
+                enhanced_rgb[j, k, i] = np.uint8(image[j, k, i] * float(ade_gray[j, k] / gray[j, k]))
+            else:
+                if gray[j, k] != 255:
+                    num = ((255 - ade_gray[j, k]) / (255 - gray[j, k])) * (float(image[j, k, i]) - gray[j, k]) + ade_gray[j, k] 
+                    if num > 255:
+                        enhanced_rgb[j, k, i] = np.uint8(255)
+                    else:
+                        enhanced_rgb[j, k, i] = num
+                else:
+                    enhanced_rgb = np.uint8(255)
+'''
+cv2.imshow('ade', np.uint8(enhanced_rgb))
+cv2.imwrite('D:\\field_project1\\color_balance\\enhanced_rgb.tif', np.uint8(enhanced_rgb))
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
