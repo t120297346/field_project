@@ -16,7 +16,7 @@ def normalize(x):
     return x / norm
 
 def map_function(x, i):
-    f = 255 * np.sum(normalize(x[0:i])) + 0.5
+    f = np.floor(255 * np.sum(normalize(x[0:i])) + 0.5)
     return f
 
 def adjustable_histogram_equalization(img):
@@ -41,11 +41,11 @@ def tone_distortion_measurement(hf):
                 max_distortion = distortion if (max_distortion == None or distortion > max_distortion) else max_distortion
     return max_distortion
 
-def min_tone_distortion(hist, uniform, factor_range = 2):
+def min_tone_distortion(hist, uniform, factor_range = 0.1):
     min_distortion = None
     for factor in np.arange(0, factor_range, 0.1):
         modified_hist = (1/(1 + factor)) * hist + (factor / (1 + factor)) * uniform
-        modified_hist = normalize(modified_hist)
+        #modified_hist = normalize(modified_hist)
         distortion = tone_distortion_measurement(modified_hist)
         print(distortion)
         if min_distortion == None or distortion < min_distortion:
@@ -53,13 +53,17 @@ def min_tone_distortion(hist, uniform, factor_range = 2):
             optimized_factor = factor
             optimized_modified_hist = modified_hist
     return optimized_modified_hist, optimized_factor
-    
 
+def adjusted_gamma_correction(img, gamma = 1.0):
+    n_image = np.uint8(np.power((img /255), gamma) * 255)
+    return(n_image)
+    
+# main 
 image = cv2.imread('D:\\field_project1\\color_balance\\real_train.tif')
 
 row = image.shape[0]
 col = image.shape[1]
-
+'''Global contrast adaptive enhancement'''
 #linear stretching
 for i in range(3):
     max = np.max(image[:, :, i])
@@ -70,40 +74,29 @@ gray = np.uint8(image[:, :, 0] * 0.114 + image[:, :, 1] * 0.587 + image[:, :, 2]
 #adopted enhance grayscale image_
 ade_gray = adjustable_histogram_equalization(gray)
 
+#enhance rgb image
 enhanced_rgb = np.zeros(image.shape)
 divider = ade_gray / (gray + 1)
+divider = divider.reshape(row, col, 1)
 greater_than_one = divider > 1
+greater_than_one = greater_than_one.reshape(row, col, 1)
 
-factor1 = ((255 - ade_gray) / (255 - gray))
+
+factor1 = ((255 - ade_gray) / (256 - gray))
 factor1 = np.dstack((factor1, factor1, factor1))
 gray = np.dstack((gray, gray, gray))
 ade_gray = np.dstack((ade_gray, ade_gray, ade_gray))
 num = ((255 - ade_gray) / (256 - gray)) * (image - gray) + ade_gray
+
+enhanced_rgb = image * greater_than_one * divider + num * (greater_than_one ^ 1)
+
+'''
 for i in range(row):
     for j in range(col):
         enhanced_rgb[i, j, :] = image[i, j, :] * divider[i, j] if greater_than_one[i, j] else num[i, j, :]
-
-
-'''
-for i in range(3):
-    for j in range(row):
-        for k in range(col):
-            gray[j, k] = np.float(gray[j, k])
-            ade_gray[j, k] = np.float(ade_gray[j, k])
-            print('123')
-            if float(ade_gray[j, k] / gray[j, k]) <= 1:
-                enhanced_rgb[j, k, i] = np.uint8(image[j, k, i] * float(ade_gray[j, k] / gray[j, k]))
-            else:
-                if gray[j, k] != 255:
-                    num = ((255 - ade_gray[j, k]) / (255 - gray[j, k])) * (float(image[j, k, i]) - gray[j, k]) + ade_gray[j, k] 
-                    if num > 255:
-                        enhanced_rgb[j, k, i] = np.uint8(255)
-                    else:
-                        enhanced_rgb[j, k, i] = num
-                else:
-                    enhanced_rgb = np.uint8(255)
 '''
 cv2.imshow('ade', np.uint8(enhanced_rgb))
+cv2.imshow('ade', ade_gray)
 cv2.imwrite('D:\\field_project1\\color_balance\\enhanced_rgb.tif', np.uint8(enhanced_rgb))
 cv2.waitKey(0)
 cv2.destroyAllWindows()
