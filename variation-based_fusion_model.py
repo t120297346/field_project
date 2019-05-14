@@ -133,16 +133,25 @@ b_e = local_enhanced_image / 255
 brightness_g = np.exp(-np.power((b_g - 0.5), 2) / (2 * np.power(sigma1, 2)))
 brightness_e = np.exp(-np.power((b_e - 0.5), 2) / (2 * np.power(sigma1, 2)))
 '''weight map'''
-boolean_g = b_g > b_e
+boolean_g = b_g < laplacian_G
+weight_map_g = b_g * boolean_g + laplacian_G * (boolean_g ^ 1)
+boolean_e = b_e < laplacian_E
+weight_map_e = b_e * boolean_e + laplacian_E * (boolean_e ^ 1)
+n_weight_map_g = weight_map_g / (weight_map_g + weight_map_e)
+n_weight_map_e = weight_map_e / (weight_map_g + weight_map_e)
+'''energy function'''
+f_a = alpha * (np.transpose(n_weight_map_g) * np.power((I_z - global_enhanced_image), 2) + np.transpose(n_weight_map_e) * np.power((I_z - local_enhanced_image), 2))
 
+#color consistency
 
-#cv2.imshow('global', laplacian_G)
-#cv2.imshow('local', laplacian_E)
-#cv2.imwrite('D:\\field_project1\\color_balance\\global.tif', global_enhanced_image)
-#cv2.imwrite('D:\\field_project1\\color_balance\\local_256.tif', local_enhanced_image)
+'''
+cv2.imshow('global', laplacian_G)
+cv2.imshow('local', laplacian_E)
+cv2.imwrite('D:\\field_project1\\color_balance\\global.tif', global_enhanced_image)
+cv2.imwrite('D:\\field_project1\\color_balance\\local_256.tif', local_enhanced_image)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
-
+'''
 
 
 
